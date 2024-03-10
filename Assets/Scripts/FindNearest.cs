@@ -1,31 +1,73 @@
-using System.Collections;
-using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 
 public class FindNearest : MonoBehaviour
 {
+    // The size of our arrays does not need to vary, so rather than create
+    // new arrays every field, we'll create the arrays in Awake() and store them
+    // in these fields.
+    NativeArray<float3> TargetPositions;
+    NativeArray<float3> SeekerPositions;
+    NativeArray<float3> nearestTargetPosition;
 
-    // Update is called once per frame
-    void Update()
+    public void Start()
     {
-        foreach (Transform seekerTransform in Spawner.SeekerTransforms)
+        Spawner spawner = Object.FindObjectOfType<Spawner>();
+        // We use the Persistent allocator because these arrays must
+        // exist for the run of the program.
+        TargetPositions = new NativeArray<float3>(spawner.numTargets, Allocator.Persistent);
+        SeekerPositions = new NativeArray<float3>(spawner.numSeekers, Allocator.Persistent);
+        nearestTargetPosition = new NativeArray<float3>(spawner.numSeekers, Allocator.Persistent);
+    }
+
+    // We are responsible for disposing of our allocations
+    // when we no longer need them.
+    public void OnDestroy()
+    {
+        TargetPositions.Dispose();
+        SeekerPositions.Dispose();
+        nearestTargetPosition.Dispose();
+    }
+
+    public void Update()
+    {
+        // Copy every target transform to a NativeArray.
+        for (int i = 0; i < TargetPositions.Length; i++)
         {
-            Vector3 seekerPos = seekerTransform.localPosition;
-            Vector3 nearestTargetPos = default;
-            float nearestDistSq = float.MaxValue;
-            
-            foreach(Transform targetTransform in Spawner.TargetTransforms)
-            {
-                Vector3 offset = targetTransform.localPosition - seekerPos;
-                float distSq = offset.sqrMagnitude;
-                if (distSq < nearestDistSq)
-                {
-                    nearestDistSq = distSq;
-                    nearestTargetPos = targetTransform.localPosition;
-                }
-            }
-            Debug.DrawLine(seekerPos, nearestTargetPos);
+            // Vector3 is implicitly converted to float3
+            TargetPositions[i] = Spawner.TargetTransforms[i].localPosition;
         }
-        
+
+        // Copy every seeker transform to a NativeArray.
+        for (int i = 0; i < SeekerPositions.Length; i++)
+        {
+            // Vector3 is implicitly converted to float3
+            SeekerPositions[i] = Spawner.SeekerTransforms[i].localPosition;
+        }
+
+        // To schedule a job, we first need to create an instance and populate its fields.
+        FindNearestJob findJob = new FindNearestJob
+        {
+            TargetPositions = TargetPositions,
+            SeekerPositions = SeekerPositions,
+            nearestTargetPosition = nearestTargetPosition,
+        };
+
+        // Schedule() puts the job instance on the job queue.
+        JobHandle findHandle = findJob.Schedule();
+
+        // The Complete method will not return until the job represented by
+        // the handle finishes execution. Effectively, the main thread waits
+        // here until the job is done.
+        findHandle.Complete();
+
+        // Draw a debug line from each seeker to its nearest target.
+        for (int i = 0; i < SeekerPositions.Length; i++)
+        {
+            // float3 is implicitly converted to Vector3
+            Debug.DrawLine(SeekerPositions[i], nearestTargetPosition[i]);
+        }
     }
 }

@@ -158,7 +158,7 @@ MonoBehaviour:
     type: 3}
   numSeekers: 1000
   numTargets: 1000
-  Bounds: {x: 10, y: 10}
+  Bounds: {x: 500, y: 500}
 --- !u!4 &29812050
 Transform:
   m_ObjectHideFlags: 0
