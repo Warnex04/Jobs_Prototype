@@ -156,8 +156,8 @@ MonoBehaviour:
     type: 3}
   targetPrefab: {fileID: 3490005034306389438, guid: cf4fe81346c014d4a8b5450c87960609,
     type: 3}
-  numSeekers: 1000
-  numTargets: 1000
+  numSeekers: 10000
+  numTargets: 10000
   Bounds: {x: 500, y: 500}
 --- !u!4 &29812050
 Transform:

@@ -10,7 +10,7 @@ public class FindNearest : MonoBehaviour
     // in these fields.
     NativeArray<float3> TargetPositions;
     NativeArray<float3> SeekerPositions;
-    NativeArray<float3> nearestTargetPosition;
+    NativeArray<float3> nearestTargetPositions;
 
     public void Start()
     {
@@ -19,7 +19,7 @@ public class FindNearest : MonoBehaviour
         // exist for the run of the program.
         TargetPositions = new NativeArray<float3>(spawner.numTargets, Allocator.Persistent);
         SeekerPositions = new NativeArray<float3>(spawner.numSeekers, Allocator.Persistent);
-        nearestTargetPosition = new NativeArray<float3>(spawner.numSeekers, Allocator.Persistent);
+        nearestTargetPositions = new NativeArray<float3>(spawner.numSeekers, Allocator.Persistent);
     }
 
     // We are responsible for disposing of our allocations
@@ -28,7 +28,7 @@ public class FindNearest : MonoBehaviour
     {
         TargetPositions.Dispose();
         SeekerPositions.Dispose();
-        nearestTargetPosition.Dispose();
+        nearestTargetPositions.Dispose();
     }
 
     public void Update()
@@ -52,11 +52,15 @@ public class FindNearest : MonoBehaviour
         {
             TargetPositions = TargetPositions,
             SeekerPositions = SeekerPositions,
-            nearestTargetPosition = nearestTargetPosition,
+            nearestTargetPositions = nearestTargetPositions,
         };
 
         // Schedule() puts the job instance on the job queue.
-        JobHandle findHandle = findJob.Schedule();
+        // This job processes every seeker, so the
+        // seeker array length is used as the index count.
+        // A batch size of 100 is semi-arbitrarily chosen here 
+        // simply because it's not too big but not too small.
+        JobHandle findHandle = findJob.Schedule(SeekerPositions.Length, 100);
 
         // The Complete method will not return until the job represented by
         // the handle finishes execution. Effectively, the main thread waits
@@ -67,7 +71,7 @@ public class FindNearest : MonoBehaviour
         for (int i = 0; i < SeekerPositions.Length; i++)
         {
             // float3 is implicitly converted to Vector3
-            Debug.DrawLine(SeekerPositions[i], nearestTargetPosition[i]);
+            Debug.DrawLine(SeekerPositions[i], nearestTargetPositions[i]);
         }
     }
 }
