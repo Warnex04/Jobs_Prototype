@@ -47,24 +47,22 @@ public class FindNearest : MonoBehaviour
             SeekerPositions[i] = Spawner.SeekerTransforms[i].localPosition;
         }
 
-        // To schedule a job, we first need to create an instance and populate its fields.
+        SortJob<float3, AxisXComparer> sortJob = TargetPositions.SortJob(new AxisXComparer { });
+        JobHandle sortHandle = sortJob.Schedule();
+
         FindNearestJob findJob = new FindNearestJob
         {
             TargetPositions = TargetPositions,
             SeekerPositions = SeekerPositions,
-            nearestTargetPositions = nearestTargetPositions,
+            NearestTargetPositions = nearestTargetPositions,
         };
 
-        // Schedule() puts the job instance on the job queue.
-        // This job processes every seeker, so the
-        // seeker array length is used as the index count.
-        // A batch size of 100 is semi-arbitrarily chosen here 
-        // simply because it's not too big but not too small.
-        JobHandle findHandle = findJob.Schedule(SeekerPositions.Length, 100);
-
-        // The Complete method will not return until the job represented by
-        // the handle finishes execution. Effectively, the main thread waits
-        // here until the job is done.
+        // By passing the sort job handle to Schedule(), the find job will depend
+        // upon the sort job, meaning the find job will not start executing until 
+        // after the sort job has finished.
+        // The find nearest job needs to wait for the sorting, 
+        // so it must depend upon the sorting jobs. 
+        JobHandle findHandle = findJob.Schedule(SeekerPositions.Length, 100, sortHandle);
         findHandle.Complete();
 
         // Draw a debug line from each seeker to its nearest target.
